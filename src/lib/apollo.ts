@@ -31,6 +31,20 @@ export interface RefreshData {
   refresh: { accessToken: string; user: User };
 }
 
+export interface RegisterData {
+  register: { accessToken: string; user: User };
+}
+
+export interface RegisterInput {
+  name: string;
+  email: string;
+  password: string;
+}
+
+export interface RegisterVars {
+  input: RegisterInput;
+}
+
 // ── GraphQL operations ─────────────────────────────────────────────
 
 export const LOGIN_MUTATION = gql`
@@ -55,6 +69,75 @@ export const REFRESH_MUTATION = gql`
         email
         name
       }
+    }
+  }
+`;
+
+export const REGISTER_MUTATION = gql`
+  mutation Register($input: RegisterInput!) {
+    register(input: $input) {
+      accessToken
+      user {
+        id
+        email
+        name
+      }
+    }
+  }
+`;
+
+// ── Team & Task operations ────────────────────────────────────────
+
+export const MY_TEAM_QUERY = gql`
+  query MyTeam {
+    myTeam {
+      id
+      name
+      members {
+        id
+        user {
+          id
+          name
+          email
+        }
+        role
+      }
+    }
+  }
+`;
+
+export const TASKS_QUERY = gql`
+  query Tasks {
+    tasks {
+      id
+      title
+      description
+      status
+      assignee {
+        id
+        name
+      }
+      createdAt
+    }
+  }
+`;
+
+export const DELETE_TASK_MUTATION = gql`
+  mutation DeleteTask($id: ID!) {
+    deleteTask(id: $id)
+  }
+`;
+
+export const INVITE_MEMBER_MUTATION = gql`
+  mutation InviteMember($input: InviteMemberInput!) {
+    inviteMember(input: $input) {
+      id
+      user {
+        id
+        name
+        email
+      }
+      role
     }
   }
 `;

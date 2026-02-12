@@ -2,12 +2,15 @@ import { type FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 
-export default function Login() {
-  const { login, error, isAuthenticated } = useAuth();
+export default function Register() {
+  const { register, error, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [localError, setLocalError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   // Redirect if already logged in
@@ -17,9 +20,21 @@ export default function Login() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    setLocalError(null);
+
+    if (password !== confirmPassword) {
+      setLocalError("Passwords do not match.");
+      return;
+    }
+
+    if (password.length < 6) {
+      setLocalError("Password must be at least 6 characters.");
+      return;
+    }
+
     setSubmitting(true);
     try {
-      await login(email, password);
+      await register(name, email, password);
       navigate("/dashboard", { replace: true });
     } catch {
       // Error is set in AuthContext
@@ -28,16 +43,32 @@ export default function Login() {
     }
   };
 
+  const displayError = localError || error;
+
   return (
     <div className="login-page">
       <div className="login-card">
         <div className="login-header">
           <h1>Team Task Manager</h1>
-          <p>Sign in to your account</p>
+          <p>Create a new account</p>
         </div>
 
         <form onSubmit={handleSubmit} className="login-form">
-          {error && <div className="login-error">{error}</div>}
+          {displayError && <div className="login-error">{displayError}</div>}
+
+          <div className="form-group">
+            <label htmlFor="name">Full name</label>
+            <input
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="John Doe"
+              required
+              autoComplete="name"
+              autoFocus
+            />
+          </div>
 
           <div className="form-group">
             <label htmlFor="email">Email</label>
@@ -49,7 +80,6 @@ export default function Login() {
               placeholder="you@example.com"
               required
               autoComplete="email"
-              autoFocus
             />
           </div>
 
@@ -60,9 +90,24 @@ export default function Login() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
+              placeholder="At least 6 characters"
               required
-              autoComplete="current-password"
+              autoComplete="new-password"
+              minLength={6}
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="confirm-password">Confirm password</label>
+            <input
+              id="confirm-password"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Repeat your password"
+              required
+              autoComplete="new-password"
+              minLength={6}
             />
           </div>
 
@@ -70,16 +115,16 @@ export default function Login() {
             {submitting ? (
               <span className="btn-loading">
                 <span className="spinner small" />
-                Signing in...
+                Creating account...
               </span>
             ) : (
-              "Sign in"
+              "Create account"
             )}
           </button>
         </form>
 
         <p className="auth-switch">
-          Don't have an account? <Link to="/register">Create one</Link>
+          Already have an account? <Link to="/login">Sign in</Link>
         </p>
       </div>
     </div>

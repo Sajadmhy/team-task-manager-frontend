@@ -16,10 +16,13 @@ import {
 } from "../lib/auth";
 import {
   LOGIN_MUTATION,
+  REGISTER_MUTATION,
   REFRESH_MUTATION,
   refreshAccessToken,
   type LoginData,
   type LoginVars,
+  type RegisterData,
+  type RegisterVars,
   type RefreshData,
 } from "../lib/apollo";
 import { AuthContext } from "./authTypes";
@@ -32,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   const [loginMutation] = useMutation<LoginData, LoginVars>(LOGIN_MUTATION);
+  const [registerMutation] = useMutation<RegisterData, RegisterVars>(REGISTER_MUTATION);
   const [refreshMutation] = useMutation<RefreshData>(REFRESH_MUTATION, {
     fetchPolicy: "no-cache",
   });
@@ -99,6 +103,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [loginMutation],
   );
 
+  const register = useCallback(
+    async (name: string, email: string, password: string) => {
+      setError(null);
+      try {
+        const { data } = await registerMutation({
+          variables: { input: { name, email, password } },
+        });
+
+        if (data?.register) {
+          setAccessToken(data.register.accessToken);
+          setUser(data.register.user);
+          scheduleRefresh(refreshAccessToken);
+        }
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error ? err.message : "Registration failed. Please try again.";
+        setError(message);
+        throw err;
+      }
+    },
+    [registerMutation],
+  );
+
   const logout = useCallback(() => {
     clearTokens();
     setUser(null);
@@ -111,10 +138,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: !!user,
       isLoading,
       login,
+      register,
       logout,
       error,
     }),
-    [user, isLoading, login, logout, error],
+    [user, isLoading, login, register, logout, error],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
