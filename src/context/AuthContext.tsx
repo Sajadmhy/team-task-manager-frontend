@@ -18,12 +18,14 @@ import {
   LOGIN_MUTATION,
   REGISTER_MUTATION,
   REFRESH_MUTATION,
+  LOGOUT_MUTATION,
   refreshAccessToken,
   type LoginData,
   type LoginVars,
   type RegisterData,
   type RegisterVars,
   type RefreshData,
+  type LogoutData,
 } from "../lib/apollo";
 import { AuthContext } from "./authTypes";
 
@@ -35,10 +37,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   const [loginMutation] = useMutation<LoginData, LoginVars>(LOGIN_MUTATION);
-  const [registerMutation] = useMutation<RegisterData, RegisterVars>(REGISTER_MUTATION);
+  const [registerMutation] = useMutation<RegisterData, RegisterVars>(
+    REGISTER_MUTATION,
+  );
   const [refreshMutation] = useMutation<RefreshData>(REFRESH_MUTATION, {
     fetchPolicy: "no-cache",
   });
+  const [logoutMutation] = useMutation<LogoutData>(LOGOUT_MUTATION);
 
   useEffect(() => {
     const restore = async () => {
@@ -95,7 +100,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (err: unknown) {
         const message =
-          err instanceof Error ? err.message : "Login failed. Please try again.";
+          err instanceof Error
+            ? err.message
+            : "Login failed. Please try again.";
         setError(message);
         throw err;
       }
@@ -118,7 +125,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (err: unknown) {
         const message =
-          err instanceof Error ? err.message : "Registration failed. Please try again.";
+          err instanceof Error
+            ? err.message
+            : "Registration failed. Please try again.";
         setError(message);
         throw err;
       }
@@ -126,11 +135,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [registerMutation],
   );
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    try {
+      await logoutMutation();
+    } catch {
+      // Even if the server call fails, clear locally
+    }
     clearTokens();
     setUser(null);
     setError(null);
-  }, []);
+  }, [logoutMutation]);
 
   const value = useMemo(
     () => ({

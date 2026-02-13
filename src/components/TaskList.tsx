@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
 import { useTeam } from "../context/useTeam";
 import { TaskStatus } from "../types/team";
 
@@ -15,18 +15,46 @@ const STATUS_CLASSES: Record<TaskStatus, string> = {
 };
 
 export default function TaskList() {
-  const { tasks, isLoading, isAdmin, deleteTask } = useTeam();
+  const { tasks, isLoading, isAdmin, deleteTask, createTask, error } = useTeam();
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const [showForm, setShowForm] = useState(false);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this task?")) return;
     setDeletingId(id);
+    setDeleteError(null);
     try {
       await deleteTask(id);
-    } catch {
-      // Error is handled by Apollo
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to delete task.";
+      setDeleteError(message);
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleCreate = async (e: FormEvent) => {
+    e.preventDefault();
+    setCreateError(null);
+    setCreating(true);
+    try {
+      await createTask(title, description || undefined);
+      setTitle("");
+      setDescription("");
+      setShowForm(false);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to create task.";
+      setCreateError(message);
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -43,16 +71,108 @@ export default function TaskList() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="card">
+        <div className="card-header">
+          <h2>Tasks</h2>
+        </div>
+        <div className="card-body">
+          <p className="error-state">Failed to load tasks: {error}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="card">
       <div className="card-header">
         <h2>Tasks</h2>
-        <span className="badge badge-neutral">{tasks.length}</span>
+        <div className="card-header-actions">
+          <span className="badge badge-neutral">{tasks.length}</span>
+          <button
+            className="add-task-btn"
+            onClick={() => setShowForm(!showForm)}
+            aria-label={showForm ? "Cancel adding task" : "Add new task"}
+          >
+            {showForm ? (
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                <path d="M4 4l8 8M12 4l-8 8" />
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M8 3v10M3 8h10" />
+              </svg>
+            )}
+          </button>
+        </div>
       </div>
+
+      {showForm && (
+        <form onSubmit={handleCreate} className="add-task-form">
+          {createError && <div className="invite-error">{createError}</div>}
+          <div className="form-group">
+            <label htmlFor="task-title">Title</label>
+            <input
+              id="task-title"
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="What needs to be done?"
+              required
+              autoFocus
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="task-description">Description (optional)</label>
+            <textarea
+              id="task-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Add more details..."
+              rows={2}
+            />
+          </div>
+          <div className="add-task-actions">
+            <button
+              type="button"
+              className="add-task-cancel"
+              onClick={() => {
+                setShowForm(false);
+                setTitle("");
+                setDescription("");
+                setCreateError(null);
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="invite-btn"
+              disabled={creating}
+            >
+              {creating ? (
+                <span className="btn-loading">
+                  <span className="spinner small" />
+                  Adding...
+                </span>
+              ) : (
+                "Add Task"
+              )}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {deleteError && (
+        <div className="card-body">
+          <p className="error-state">{deleteError}</p>
+        </div>
+      )}
 
       {tasks.length === 0 ? (
         <div className="card-body">
-          <p className="empty-state">No tasks yet.</p>
+          <p className="empty-state">No tasks yet. Click + to add one.</p>
         </div>
       ) : (
         <ul className="task-list">
@@ -71,9 +191,9 @@ export default function TaskList() {
                   <p className="task-description">{task.description}</p>
                 )}
                 <div className="task-meta">
-                  {task.assignee && (
+                  {task.assignedUser && (
                     <span className="task-assignee">
-                      Assigned to <strong>{task.assignee.name}</strong>
+                      Assigned to <strong>{task.assignedUser.name}</strong>
                     </span>
                   )}
                 </div>

@@ -1,17 +1,55 @@
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTeam } from "../context/useTeam";
 import { TeamRole } from "../types/team";
 
-export default function InviteMember() {
-  const { isAdmin, inviteMember } = useTeam();
+interface Props {
+  open: boolean;
+  onClose: () => void;
+}
 
-  const [email, setEmail] = useState("");
+export default function InviteMember({ open, onClose }: Props) {
+  const { addTeamMember } = useTeam();
+
+  const [userId, setUserId] = useState("");
   const [role, setRole] = useState<TeamRole>(TeamRole.USER);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  if (!isAdmin) return null;
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (open) {
+      inputRef.current?.focus();
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [open, onClose]);
+
+  const reset = () => {
+    setUserId("");
+    setRole(TeamRole.USER);
+    setError(null);
+    setSuccess(null);
+  };
+
+  const handleClose = () => {
+    reset();
+    onClose();
+  };
+
+  const handleOverlayClick = (e: React.MouseEvent) => {
+    if (e.target === overlayRef.current) handleClose();
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -20,42 +58,55 @@ export default function InviteMember() {
     setSubmitting(true);
 
     try {
-      await inviteMember(email, role);
-      setSuccess(`Invitation sent to ${email}`);
-      setEmail("");
+      await addTeamMember(userId, role);
+      setSuccess("Member added successfully");
+      setUserId("");
       setRole(TeamRole.USER);
     } catch (err: unknown) {
       const message =
-        err instanceof Error ? err.message : "Failed to send invitation.";
+        err instanceof Error ? err.message : "Failed to add member.";
       setError(message);
     } finally {
       setSubmitting(false);
     }
   };
 
-  return (
-    <div className="card">
-      <div className="card-header">
-        <h2>Invite New Member</h2>
-      </div>
-      <form onSubmit={handleSubmit} className="invite-form">
-        {error && <div className="invite-error">{error}</div>}
-        {success && <div className="invite-success">{success}</div>}
+  if (!open) return null;
 
-        <div className="invite-fields">
-          <div className="form-group invite-email-group">
-            <label htmlFor="invite-email">Email address</label>
+  return createPortal(
+    <div className="modal-overlay" ref={overlayRef} onClick={handleOverlayClick}>
+      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div className="modal-header">
+          <h2 id="modal-title">Add Team Member</h2>
+          <button
+            className="modal-close"
+            onClick={handleClose}
+            aria-label="Close"
+          >
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <path d="M4.5 4.5l9 9M13.5 4.5l-9 9" />
+            </svg>
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="modal-body">
+          {error && <div className="invite-error">{error}</div>}
+          {success && <div className="invite-success">{success}</div>}
+
+          <div className="form-group">
+            <label htmlFor="invite-user-id">User email</label>
             <input
-              id="invite-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="colleague@example.com"
+              ref={inputRef}
+              id="invite-user-id"
+              type="text"
+              value={userId}
+              onChange={(e) => setUserId(e.target.value)}
+              placeholder="Enter user's email"
               required
             />
           </div>
 
-          <div className="form-group invite-role-group">
+          <div className="form-group">
             <label htmlFor="invite-role">Role</label>
             <select
               id="invite-role"
@@ -67,22 +118,32 @@ export default function InviteMember() {
             </select>
           </div>
 
-          <button
-            type="submit"
-            className="invite-btn"
-            disabled={submitting}
-          >
-            {submitting ? (
-              <span className="btn-loading">
-                <span className="spinner small" />
-                Sending...
-              </span>
-            ) : (
-              "Invite"
-            )}
-          </button>
-        </div>
-      </form>
-    </div>
+          <div className="modal-actions">
+            <button
+              type="button"
+              className="add-task-cancel"
+              onClick={handleClose}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="invite-btn"
+              disabled={submitting}
+            >
+              {submitting ? (
+                <span className="btn-loading">
+                  <span className="spinner small" />
+                  Adding...
+                </span>
+              ) : (
+                "Add Member"
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>,
+    document.body,
   );
 }

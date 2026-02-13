@@ -7,7 +7,7 @@ export interface AuthState {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void> | void;
   error: string | null;
 }
 
