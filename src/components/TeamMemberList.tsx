@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { memo, useCallback, useState } from "react";
 import { useTeam } from "../context/useTeam";
 import { TeamRole } from "../types/team";
 import InviteMember from "./InviteMember";
 
-export default function TeamMemberList() {
+function TeamMemberList() {
   const { team, isLoading, isAdmin, error } = useTeam();
   const [modalOpen, setModalOpen] = useState(false);
+  const handleCloseModal = useCallback(() => setModalOpen(false), []);
 
   if (isLoading) {
     return (
@@ -91,7 +92,9 @@ export default function TeamMemberList() {
         </ul>
       </div>
 
-      <InviteMember open={modalOpen} onClose={() => setModalOpen(false)} />
+      <InviteMember open={modalOpen} onClose={handleCloseModal} />
     </>
   );
 }
+
+export default memo(TeamMemberList);

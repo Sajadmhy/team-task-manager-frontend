@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from "react";
+import { type FormEvent, memo, useCallback, useState } from "react";
 import { useTeam } from "../context/useTeam";
 import { TaskStatus } from "../types/team";
 
@@ -14,7 +14,7 @@ const STATUS_CLASSES: Record<TaskStatus, string> = {
   [TaskStatus.DONE]: "badge-done",
 };
 
-export default function TaskList() {
+function TaskList() {
   const { tasks, isLoading, isAdmin, deleteTask, createTask, error } = useTeam();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -25,38 +25,44 @@ export default function TaskList() {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this task?")) return;
-    setDeletingId(id);
-    setDeleteError(null);
-    try {
-      await deleteTask(id);
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Failed to delete task.";
-      setDeleteError(message);
-    } finally {
-      setDeletingId(null);
-    }
-  };
+  const handleDelete = useCallback(
+    async (id: string) => {
+      if (!confirm("Are you sure you want to delete this task?")) return;
+      setDeletingId(id);
+      setDeleteError(null);
+      try {
+        await deleteTask(id);
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error ? err.message : "Failed to delete task.";
+        setDeleteError(message);
+      } finally {
+        setDeletingId(null);
+      }
+    },
+    [deleteTask],
+  );
 
-  const handleCreate = async (e: FormEvent) => {
-    e.preventDefault();
-    setCreateError(null);
-    setCreating(true);
-    try {
-      await createTask(title, description || undefined);
-      setTitle("");
-      setDescription("");
-      setShowForm(false);
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Failed to create task.";
-      setCreateError(message);
-    } finally {
-      setCreating(false);
-    }
-  };
+  const handleCreate = useCallback(
+    async (e: FormEvent) => {
+      e.preventDefault();
+      setCreateError(null);
+      setCreating(true);
+      try {
+        await createTask(title, description || undefined);
+        setTitle("");
+        setDescription("");
+        setShowForm(false);
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error ? err.message : "Failed to create task.";
+        setCreateError(message);
+      } finally {
+        setCreating(false);
+      }
+    },
+    [createTask, title, description],
+  );
 
   if (isLoading) {
     return (
@@ -232,3 +238,5 @@ export default function TaskList() {
     </div>
   );
 }
+
+export default memo(TaskList);

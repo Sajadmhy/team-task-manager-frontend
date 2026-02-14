@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useCallback, useState } from "react";
 import { useAuth } from "../context/useAuth";
 import { TeamProvider } from "../context/TeamContext";
 import TeamMemberList from "../components/TeamMemberList";
@@ -6,12 +6,12 @@ import TaskList from "../components/TaskList";
 import CreateTeamPrompt from "../components/CreateTeamPrompt";
 import { useTeam } from "../context/useTeam";
 
-function DashboardContent() {
+const DashboardContent = memo(function DashboardContent() {
   const { team, isLoading, isAdmin, error, deleteTeam } = useTeam();
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const handleDeleteTeam = async () => {
+  const handleDeleteTeam = useCallback(async () => {
     if (!team) return;
     if (
       !confirm(
@@ -31,7 +31,7 @@ function DashboardContent() {
     } finally {
       setDeleting(false);
     }
-  };
+  }, [team, deleteTeam]);
 
   if (isLoading) {
     return (
@@ -110,7 +110,7 @@ function DashboardContent() {
       </div>
     </main>
   );
-}
+});
 
 export default function Dashboard() {
   const { user, logout } = useAuth();

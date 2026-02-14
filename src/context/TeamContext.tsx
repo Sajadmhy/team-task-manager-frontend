@@ -54,6 +54,10 @@ import {
   type RemoveMemberVars,
 } from "../types/team";
 
+// Stable references to avoid creating new empty arrays on every render
+const EMPTY_TEAMS: TeamsData["teams"] = [];
+const EMPTY_TASKS: TasksData["tasks"] = [];
+
 // ── Provider ──────────────────────────────────────────────────────
 
 export function TeamProvider({ children }: { children: ReactNode }) {
@@ -68,8 +72,9 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     refetch: refetchTeams,
   } = useQuery<TeamsData>(MY_TEAMS_QUERY);
 
-  // Use the first team the user belongs to as the active team
-  const team = teamsData?.teams?.[0] ?? null;
+  // Memoize derived arrays so they keep stable references between renders
+  const teams = useMemo(() => teamsData?.teams ?? EMPTY_TEAMS, [teamsData]);
+  const team = teams[0] ?? null;
   const teamId = team?.id;
 
   const {
@@ -137,7 +142,9 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     UpdateTaskStatusVars
   >(UPDATE_TASK_STATUS_MUTATION);
 
-  // Derive current user's role from the members list
+  const tasks = useMemo(() => tasksData?.tasks ?? EMPTY_TASKS, [tasksData]);
+
+  // Derive current user's role and admin status from the members list
   const myRole = useMemo(() => {
     if (!team?.members || !user) return null;
     const me = team.members.find((m) => m.user.id === user.id);
@@ -261,14 +268,16 @@ export function TeamProvider({ children }: { children: ReactNode }) {
   const errorMessage =
     teamsError?.message || tasksError?.message || null;
 
+  const isLoading = teamsLoading || tasksLoading;
+
   const value = useMemo<TeamState>(
     () => ({
       team,
-      teams: teamsData?.teams ?? [],
-      tasks: tasksData?.tasks ?? [],
+      teams,
+      tasks,
       myRole,
       isAdmin,
-      isLoading: teamsLoading || tasksLoading,
+      isLoading,
       error: errorMessage,
       createTeam,
       updateTeam,
@@ -287,12 +296,11 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     }),
     [
       team,
-      teamsData,
-      tasksData,
+      teams,
+      tasks,
       myRole,
       isAdmin,
-      teamsLoading,
-      tasksLoading,
+      isLoading,
       errorMessage,
       createTeam,
       updateTeam,

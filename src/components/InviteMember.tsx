@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, memo, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTeam } from "../context/useTeam";
 import { TeamRole } from "../types/team";
@@ -8,7 +8,7 @@ interface Props {
   onClose: () => void;
 }
 
-export default function InviteMember({ open, onClose }: Props) {
+function InviteMember({ open, onClose }: Props) {
   const { addTeamMember } = useTeam();
 
   const [userId, setUserId] = useState("");
@@ -35,41 +35,43 @@ export default function InviteMember({ open, onClose }: Props) {
     return () => window.removeEventListener("keydown", handleKey);
   }, [open, onClose]);
 
-  const reset = () => {
+  const handleClose = useCallback(() => {
     setUserId("");
     setRole(TeamRole.USER);
     setError(null);
     setSuccess(null);
-  };
-
-  const handleClose = () => {
-    reset();
     onClose();
-  };
+  }, [onClose]);
 
-  const handleOverlayClick = (e: React.MouseEvent) => {
-    if (e.target === overlayRef.current) handleClose();
-  };
+  const handleOverlayClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.target === overlayRef.current) handleClose();
+    },
+    [handleClose],
+  );
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setSuccess(null);
-    setSubmitting(true);
+  const handleSubmit = useCallback(
+    async (e: FormEvent) => {
+      e.preventDefault();
+      setError(null);
+      setSuccess(null);
+      setSubmitting(true);
 
-    try {
-      await addTeamMember(userId, role);
-      setSuccess("Member added successfully");
-      setUserId("");
-      setRole(TeamRole.USER);
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Failed to add member.";
-      setError(message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
+      try {
+        await addTeamMember(userId, role);
+        setSuccess("Member added successfully");
+        setUserId("");
+        setRole(TeamRole.USER);
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error ? err.message : "Failed to add member.";
+        setError(message);
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [addTeamMember, userId, role],
+  );
 
   if (!open) return null;
 
@@ -147,3 +149,5 @@ export default function InviteMember({ open, onClose }: Props) {
     document.body,
   );
 }
+
+export default memo(InviteMember);

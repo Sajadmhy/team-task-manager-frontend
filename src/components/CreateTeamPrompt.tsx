@@ -1,28 +1,31 @@
-import { type FormEvent, useState } from "react";
+import { type FormEvent, memo, useCallback, useState } from "react";
 import { useTeam } from "../context/useTeam";
 
-export default function CreateTeamPrompt() {
+function CreateTeamPrompt() {
   const { createTeam } = useTeam();
 
   const [name, setName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setSubmitting(true);
+  const handleSubmit = useCallback(
+    async (e: FormEvent) => {
+      e.preventDefault();
+      setError(null);
+      setSubmitting(true);
 
-    try {
-      await createTeam(name);
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Failed to create team.";
-      setError(message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
+      try {
+        await createTeam(name);
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error ? err.message : "Failed to create team.";
+        setError(message);
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [createTeam, name],
+  );
 
   return (
     <div className="card create-team-prompt">
@@ -68,3 +71,5 @@ export default function CreateTeamPrompt() {
     </div>
   );
 }
+
+export default memo(CreateTeamPrompt);
